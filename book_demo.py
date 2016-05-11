@@ -10,11 +10,11 @@ import subprocess
 
 EMB_DIM = 10
 HIDDEN_DIM = 15
-SEQ_LENGTH = 7
+SEQ_LENGTH = 10
 START_TOKEN = 0
 
-EPOCH_ITER = 1000
-CURRICULUM_RATE = 0.03  # how quickly to move from supervised training to unsupervised
+EPOCH_ITER = 700
+CURRICULUM_RATE = 0.02  # how quickly to move from supervised training to unsupervised
 TRAIN_ITER = 100000  # generator/discriminator alternating
 D_STEPS = 3  # how many times to train the discriminator per generator step
 LEARNING_RATE = 0.01 * SEQ_LENGTH
@@ -54,9 +54,17 @@ def get_trainable_model(num_emb):
 
 
 def get_random_sequence(token_stream, word2idx):
-    """Returns random subequence."""
+    """Returns random subsequence."""
     start_idx = random.randint(0, len(token_stream) - SEQ_LENGTH)
     return [word2idx[tok] for tok in token_stream[start_idx:start_idx + SEQ_LENGTH]]
+
+
+def verify_sequence(three_grams, seq):
+    """Not a true verification; only checks 3-grams."""
+    for i in xrange(len(seq) - 3):
+        if tuple(seq[i:i + 3]) not in three_grams:
+            return False
+    return True
 
 
 def main():
@@ -68,8 +76,11 @@ def main():
     words = ['_START'] + list(set(token_stream))
     word2idx = dict((word, i) for i, word in enumerate(words))
     num_words = len(words)
+    three_grams = dict((tuple(word2idx[w] for w in token_stream[i:i + 3]), True)
+                       for i in xrange(len(token_stream) - 3))
     print 'num words', num_words
     print 'stream length', len(token_stream)
+    print 'distinct 3-grams', len(three_grams)
 
     trainable_model = get_trainable_model(num_words)
     sess = tf.Session()
@@ -84,6 +95,7 @@ def main():
             proportion_supervised=proportion_supervised,
             g_steps=1, d_steps=D_STEPS,
             next_sequence=lambda: get_random_sequence(token_stream, word2idx),
+            verify_sequence=lambda seq: verify_sequence(three_grams, seq),
             words=words)
 
 
