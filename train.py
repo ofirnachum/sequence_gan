@@ -7,6 +7,7 @@ import random
 def train_epoch(sess, trainable_model, num_iter,
                 proportion_supervised, g_steps, d_steps,
                 next_sequence, verify_sequence=None,
+                words=None,
                 proportion_generated=0.5):
     """Perform training for model.
 
@@ -19,6 +20,7 @@ def train_epoch(sess, trainable_model, num_iter,
     d_steps: number of discriminator training steps per iteration
     next_sequence: function that returns a groundtruth sequence
     verify_sequence: function that checks a generated sequence, returning True/False
+    words:  array of words (to map indices back to words)
     proportion_generated: what proportion of steps for the discriminator
         should be on artificially generated data
 
@@ -65,6 +67,9 @@ def train_epoch(sess, trainable_model, num_iter,
     print 'epoch statistics:'
     print '>>>> discriminator loss:', np.mean(d_losses)
     print '>>>> generator loss:', np.mean(supervised_g_losses), np.mean(unsupervised_g_losses)
-    print '>>>> correct generations (supervised, unsupervised):', np.mean(supervised_correct_generation), np.mean(unsupervised_correct_generation)
-    print '>>>> sampled generations (supervised, unsupervised):', supervised_gen_x, unsupervised_gen_x
+    if verify_sequence is not None:
+        print '>>>> correct generations (supervised, unsupervised):', np.mean(supervised_correct_generation), np.mean(unsupervised_correct_generation)
+    print '>>>> sampled generations (supervised, unsupervised):',
+    print [words[x] if words else x for x in supervised_gen_x] if supervised_gen_x is not None else None,
+    print [words[x] if words else x for x in unsupervised_gen_x] if unsupervised_gen_x is not None else None
     print '>>>> expected rewards:', np.mean(expected_rewards)
