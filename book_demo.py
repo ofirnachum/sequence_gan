@@ -8,16 +8,15 @@ import tensorflow as tf
 import random
 import subprocess
 
-EMB_DIM = 10
-HIDDEN_DIM = 15
+EMB_DIM = 20
+HIDDEN_DIM = 25
 SEQ_LENGTH = 10
 START_TOKEN = 0
 
-EPOCH_ITER = 700
+EPOCH_ITER = 1000
 CURRICULUM_RATE = 0.02  # how quickly to move from supervised training to unsupervised
 TRAIN_ITER = 100000  # generator/discriminator alternating
 D_STEPS = 3  # how many times to train the discriminator per generator step
-LEARNING_RATE = 0.01 * SEQ_LENGTH
 SEED = 88
 
 DATA_FILE = 'book.txt'
@@ -37,7 +36,7 @@ def get_data(download=True):
     token_stream = []
     with open(DATA_FILE, 'r') as f:
         for line in f:
-            if 'Call me Ishmael.' in line or token_stream:
+            if ('Call me Ishmael.' in line or token_stream) and line.strip():
                 token_stream.extend(tokenize(line.strip().lower()))
                 token_stream.append(' ')
             if len(token_stream) > 10000 * SEQ_LENGTH:  # enouch data
@@ -46,11 +45,19 @@ def get_data(download=True):
     return token_stream
 
 
+class BookGRU(model.GRU):
+
+    def d_optimizer(self, *args, **kwargs):
+        return tf.train.AdamOptimizer()  # ignore learning rate
+
+    def g_optimizer(self, *args, **kwargs):
+        return tf.train.AdamOptimizer()  # ignore learning rate
+
+
 def get_trainable_model(num_emb):
-    return model.GRU(
+    return BookGRU(
         num_emb, EMB_DIM, HIDDEN_DIM,
-        SEQ_LENGTH, START_TOKEN,
-        learning_rate=LEARNING_RATE)
+        SEQ_LENGTH, START_TOKEN)
 
 
 def get_random_sequence(token_stream, word2idx):

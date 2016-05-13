@@ -28,7 +28,7 @@ def train_epoch(sess, trainable_model, num_iter,
     supervised_g_losses = [0]  # we put in 0 to avoid empty slices
     unsupervised_g_losses = [0]  # we put in 0 to avoid empty slices
     d_losses = [0]
-    expected_rewards = [0]
+    expected_rewards = [[0] * trainable_model.sequence_length]
     supervised_correct_generation = [0]
     unsupervised_correct_generation = [0]
     supervised_gen_x = None
@@ -72,4 +72,4 @@ def train_epoch(sess, trainable_model, num_iter,
     print '>>>> sampled generations (supervised, unsupervised):',
     print [words[x] if words else x for x in supervised_gen_x] if supervised_gen_x is not None else None,
     print [words[x] if words else x for x in unsupervised_gen_x] if unsupervised_gen_x is not None else None
-    print '>>>> expected rewards:', np.mean(expected_rewards)
+    print '>>>> expected rewards:', np.mean(expected_rewards, axis=0)

@@ -40,7 +40,7 @@ class RNN(object):
         self.g_params = []
         self.d_params = []
 
-        self.expected_reward = tf.Variable(float(0))
+        self.expected_reward = tf.Variable(tf.zeros([self.sequence_length]))
 
         with tf.variable_scope('generator'):
             self.g_embeddings = tf.Variable(self.init_matrix([self.num_emb, self.emb_dim]))
@@ -171,7 +171,7 @@ class RNN(object):
                 self.d_real_predictions, tf.ones([self.sequence_length])))
 
         # calculate generator rewards and loss
-        decays = tf.exp(tf.log(0.9) * tf.to_float(tf.range(self.sequence_length)))
+        decays = tf.exp(tf.log(self.reward_gamma) * tf.to_float(tf.range(self.sequence_length)))
         rewards = _backwards_cumsum(decays * tf.sigmoid(self.d_gen_predictions),
                                     self.sequence_length)
         normalized_rewards = \
@@ -179,7 +179,7 @@ class RNN(object):
 
         self.reward_loss = tf.reduce_mean(normalized_rewards ** 2)
         self.g_loss = \
-            -tf.reduce_sum(tf.log(self.gen_o.pack()) * normalized_rewards) / self.sequence_length
+            -tf.reduce_mean(tf.log(self.gen_o.pack()) * normalized_rewards)
 
         # pretraining loss
         self.pretrain_loss = \
@@ -189,20 +189,24 @@ class RNN(object):
              / self.sequence_length)
 
         # training updates
-        opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+        d_opt = self.d_optimizer(self.learning_rate)
+        g_opt = self.g_optimizer(self.learning_rate)
+        pretrain_opt = self.g_optimizer(self.learning_rate)
+        reward_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+
         self.d_gen_grad = tf.gradients(self.d_gen_loss, self.d_params)
         self.d_real_grad = tf.gradients(self.d_real_loss, self.d_params)
-        self.d_gen_updates = opt.apply_gradients(zip(self.d_gen_grad, self.d_params))
-        self.d_real_updates = opt.apply_gradients(zip(self.d_real_grad, self.d_params))
+        self.d_gen_updates = d_opt.apply_gradients(zip(self.d_gen_grad, self.d_params))
+        self.d_real_updates = d_opt.apply_gradients(zip(self.d_real_grad, self.d_params))
 
         self.reward_grad = tf.gradients(self.reward_loss, [self.expected_reward])
-        self.reward_updates = opt.apply_gradients(zip(self.reward_grad, [self.expected_reward]))
+        self.reward_updates = reward_opt.apply_gradients(zip(self.reward_grad, [self.expected_reward]))
 
         self.g_grad = tf.gradients(self.g_loss, self.g_params)
-        self.g_updates = opt.apply_gradients(zip(self.g_grad, self.g_params))
+        self.g_updates = g_opt.apply_gradients(zip(self.g_grad, self.g_params))
 
         self.pretrain_grad = tf.gradients(self.pretrain_loss, self.g_params)
-        self.pretrain_updates = opt.apply_gradients(zip(self.pretrain_grad, self.g_params))
+        self.pretrain_updates = pretrain_opt.apply_gradients(zip(self.pretrain_grad, self.g_params))
 
     def generate(self, session):
         outputs = session.run(
@@ -252,11 +256,15 @@ class RNN(object):
 
     def create_output_unit(self, params, embeddings):
         self.W_out = tf.Variable(self.init_matrix([self.emb_dim, self.hidden_dim]))
-        params.append(self.W_out)
+        self.b_out1 = tf.Variable(self.init_vector([self.emb_dim, 1]))
+        self.b_out2 = tf.Variable(self.init_vector([self.num_emb, 1]))
+        params.extend([self.W_out, self.b_out1, self.b_out2])
         def unit(h_t):
             logits = tf.reshape(
+                    self.b_out2 +
                     tf.matmul(embeddings,
-                              tf.matmul(self.W_out, tf.reshape(h_t, [self.hidden_dim, 1]))),
+                              tf.tanh(self.b_out1 +
+                                      tf.matmul(self.W_out, tf.reshape(h_t, [self.hidden_dim, 1])))),
                     [1, self.num_emb])
             return tf.reshape(tf.nn.softmax(logits), [self.num_emb])
         return unit
@@ -268,6 +276,12 @@ class RNN(object):
         def unit(h_t):
             return self.b_class + tf.matmul(self.W_class, tf.reshape(h_t, [self.hidden_dim, 1]))
         return unit
+
+    def d_optimizer(self, *args, **kwargs):
+        return tf.train.GradientDescentOptimizer(*args, **kwargs)
+
+    def g_optimizer(self, *args, **kwargs):
+        return tf.train.GradientDescentOptimizer(*args, **kwargs)
 
 
 class GRU(RNN):
