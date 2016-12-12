@@ -1,6 +1,7 @@
+from __future__ import print_function
+
 __doc__ = """Training utility functions."""
 
-from __future__ import print_function
 import numpy as np
 import random
 

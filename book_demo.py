@@ -1,14 +1,18 @@
-__doc__ = """Char-based Seq-GAN on data from a book."""
-
 from __future__ import print_function
+
+import codecs
+
+__doc__ = """Char-based Seq-GAN on data from a book."""
 
 import model
 import train
 
+import os.path
 import numpy as np
 import tensorflow as tf
 import random
 import subprocess
+import gzip
 
 EMB_DIM = 20
 HIDDEN_DIM = 25
@@ -28,7 +32,7 @@ def tokenize(s):
     return [c for c in ' '.join(s.split())]
 
 
-def get_data(download=True):
+def get_data(download=not os.path.exists(DATA_FILE)):
     """Downloads and parses Moby Dick."""
     if download:
         subprocess.check_output(
@@ -36,12 +40,18 @@ def get_data(download=True):
              '-O', DATA_FILE])
 
     token_stream = []
-    with open(DATA_FILE, 'r') as f:
+    is_gzip = False
+    try:
+        open(DATA_FILE).read(2)
+    except UnicodeDecodeError:
+        is_gzip = True
+    with gzip.open(DATA_FILE) if is_gzip else codecs.open(DATA_FILE, 'r', 'utf-8') as f:
         for line in f:
+            line = line if not is_gzip else line.decode('utf-8')
             if ('Call me Ishmael.' in line or token_stream) and line.strip():
                 token_stream.extend(tokenize(line.strip().lower()))
                 token_stream.append(' ')
-            if len(token_stream) > 10000 * SEQ_LENGTH:  # enouch data
+            if len(token_stream) > 10000 * SEQ_LENGTH:  # enough data
                 break
 
     return token_stream
