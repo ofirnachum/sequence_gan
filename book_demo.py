@@ -1,5 +1,7 @@
 __doc__ = """Char-based Seq-GAN on data from a book."""
 
+from __future__ import print_function
+
 import model
 import train
 
@@ -68,7 +70,7 @@ def get_random_sequence(token_stream, word2idx):
 
 def verify_sequence(three_grams, seq):
     """Not a true verification; only checks 3-grams."""
-    for i in xrange(len(seq) - 3):
+    for i in range(len(seq) - 3):
         if tuple(seq[i:i + 3]) not in three_grams:
             return False
     return True
@@ -84,18 +86,18 @@ def main():
     word2idx = dict((word, i) for i, word in enumerate(words))
     num_words = len(words)
     three_grams = dict((tuple(word2idx[w] for w in token_stream[i:i + 3]), True)
-                       for i in xrange(len(token_stream) - 3))
-    print 'num words', num_words
-    print 'stream length', len(token_stream)
-    print 'distinct 3-grams', len(three_grams)
+                       for i in range(len(token_stream) - 3))
+    print('num words', num_words)
+    print('stream length', len(token_stream))
+    print('distinct 3-grams', len(three_grams))
 
     trainable_model = get_trainable_model(num_words)
     sess = tf.Session()
     sess.run(tf.initialize_all_variables())
 
-    print 'training'
-    for epoch in xrange(TRAIN_ITER // EPOCH_ITER):
-        print 'epoch', epoch
+    print('training')
+    for epoch in range(TRAIN_ITER // EPOCH_ITER):
+        print('epoch', epoch)
         proportion_supervised = max(0.0, 1.0 - CURRICULUM_RATE * epoch)
         train.train_epoch(
             sess, trainable_model, EPOCH_ITER,
