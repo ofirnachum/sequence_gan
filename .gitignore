@@ -1,1 +1,3 @@
 *.py[cod]
+book.txt
+__pychache__
