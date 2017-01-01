@@ -79,7 +79,7 @@ class RNN(object):
             gen_x = gen_x.write(i, next_token)  # indices, not embeddings
             return i + 1, x_tp1, h_t, gen_o, gen_x
 
-        _, _, _, self.gen_o, self.gen_x = control_flow_ops.While(
+        _, _, _, self.gen_o, self.gen_x = control_flow_ops.while_loop(
             cond=lambda i, _1, _2, _3, _4: i < self.sequence_length,
             body=_g_recurrence,
             loop_vars=(tf.constant(0, dtype=tf.int32),
@@ -112,7 +112,7 @@ class RNN(object):
             pred = pred.write(i, y_t)
             return i + 1, inputs, h_t, pred
 
-        _, _, _, self.d_gen_predictions = control_flow_ops.While(
+        _, _, _, self.d_gen_predictions = control_flow_ops.while_loop(
             cond=lambda i, _1, _2, _3: i < self.sequence_length,
             body=_d_recurrence,
             loop_vars=(tf.constant(0, dtype=tf.int32),
@@ -123,7 +123,7 @@ class RNN(object):
                 self.d_gen_predictions.pack(),
                 [self.sequence_length])
 
-        _, _, _, self.d_real_predictions = control_flow_ops.While(
+        _, _, _, self.d_real_predictions = control_flow_ops.while_loop(
             cond=lambda i, _1, _2, _3: i < self.sequence_length,
             body=_d_recurrence,
             loop_vars=(tf.constant(0, dtype=tf.int32),
@@ -151,7 +151,7 @@ class RNN(object):
             x_tp1 = ta_emb_x.read(i)
             return i + 1, x_tp1, h_t, g_predictions
 
-        _, _, _, self.g_predictions = control_flow_ops.While(
+        _, _, _, self.g_predictions = control_flow_ops.while_loop(
             cond=lambda i, _1, _2, _3: i < self.sequence_length,
             body=_pretrain_recurrence,
             loop_vars=(tf.constant(0, dtype=tf.int32),
