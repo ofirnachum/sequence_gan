@@ -91,7 +91,7 @@ def main():
 
     trainable_model = get_trainable_model()
     sess = tf.Session()
-    sess.run(tf.global_variables_initializer)
+    sess.run(tf.global_variables_initializer())
 
     print('training')
     for epoch in range(TRAIN_ITER // EPOCH_ITER):
