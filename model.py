@@ -67,7 +67,7 @@ class RNN(object):
                                              dynamic_size=False, infer_shape=True)
         samples = tensor_array_ops.TensorArray(
             dtype=tf.float32, size=self.sequence_length)
-        samples = samples.unpack(self.samples)
+        samples = samples.unstack(self.samples)
         def _g_recurrence(i, x_t, h_tm1, gen_o, gen_x):
             h_t = self.g_recurrent_unit(x_t, h_tm1)
             o_t = self.g_output_unit(h_t)
@@ -94,16 +94,16 @@ class RNN(object):
             dtype=tf.float32, size=self.sequence_length,
             dynamic_size=False, infer_shape=True)
 
-        self.gen_x = self.gen_x.pack()
+        self.gen_x = self.gen_x.stack()
         emb_gen_x = tf.gather(self.d_embeddings, self.gen_x)
         ta_emb_gen_x = tensor_array_ops.TensorArray(
             dtype=tf.float32, size=self.sequence_length)
-        ta_emb_gen_x = ta_emb_gen_x.unpack(emb_gen_x)
+        ta_emb_gen_x = ta_emb_gen_x.unstack(emb_gen_x)
 
         emb_real_x = tf.gather(self.d_embeddings, self.x)
         ta_emb_real_x = tensor_array_ops.TensorArray(
             dtype=tf.float32, size=self.sequence_length)
-        ta_emb_real_x = ta_emb_real_x.unpack(emb_real_x)
+        ta_emb_real_x = ta_emb_real_x.unstack(emb_real_x)
 
         def _d_recurrence(i, inputs, h_tm1, pred):
             x_t = inputs.read(i)
@@ -120,7 +120,7 @@ class RNN(object):
                        self.d_h0,
                        d_gen_predictions))
         self.d_gen_predictions = tf.reshape(
-                self.d_gen_predictions.pack(),
+                self.d_gen_predictions.stack(),
                 [self.sequence_length])
 
         _, _, _, self.d_real_predictions = control_flow_ops.while_loop(
@@ -131,7 +131,7 @@ class RNN(object):
                        self.d_h0,
                        d_real_predictions))
         self.d_real_predictions = tf.reshape(
-                self.d_real_predictions.pack(),
+                self.d_real_predictions.stack(),
                 [self.sequence_length])
 
         # supervised pretraining for generator
@@ -142,7 +142,7 @@ class RNN(object):
         emb_x = tf.gather(self.g_embeddings, self.x)
         ta_emb_x = tensor_array_ops.TensorArray(
             dtype=tf.float32, size=self.sequence_length)
-        ta_emb_x = ta_emb_x.unpack(emb_x)
+        ta_emb_x = ta_emb_x.unstack(emb_x)
 
         def _pretrain_recurrence(i, x_t, h_tm1, g_predictions):
             h_t = self.g_recurrent_unit(x_t, h_tm1)
@@ -159,16 +159,16 @@ class RNN(object):
                        self.h0, g_predictions))
 
         self.g_predictions = tf.reshape(
-                self.g_predictions.pack(),
+                self.g_predictions.stack(),
                 [self.sequence_length, self.num_emb])
 
         # calculate discriminator loss
         self.d_gen_loss = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(
-                self.d_gen_predictions, tf.zeros([self.sequence_length])))
+                logits=self.d_gen_predictions, labels=tf.zeros([self.sequence_length])))
         self.d_real_loss = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(
-                self.d_real_predictions, tf.ones([self.sequence_length])))
+                logits=self.d_real_predictions, labels=tf.ones([self.sequence_length])))
 
         # calculate generator rewards and loss
         decays = tf.exp(tf.log(self.reward_gamma) * tf.to_float(tf.range(self.sequence_length)))
@@ -179,7 +179,7 @@ class RNN(object):
 
         self.reward_loss = tf.reduce_mean(normalized_rewards ** 2)
         self.g_loss = \
-            -tf.reduce_mean(tf.log(self.gen_o.pack()) * normalized_rewards)
+            -tf.reduce_mean(tf.log(self.gen_o.stack()) * normalized_rewards)
 
         # pretraining loss
         self.pretrain_loss = \
