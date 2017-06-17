@@ -45,7 +45,7 @@ def get_data(download=not os.path.exists(DATA_FILE)):
         open(DATA_FILE).read(2)
     except UnicodeDecodeError:
         is_gzip = True
-    with gzip.open(DATA_FILE) if is_gzip else codecs.open(DATA_FILE, 'r', 'utf-8') as f:
+    with gzip.open(DATA_FILE) if is_gzip else codecs.open(DATA_FILE, 'r', 'utf-8',errors='ignore') as f:
         for line in f:
             line = line if not is_gzip else line.decode('utf-8')
             if ('Call me Ishmael.' in line or token_stream) and line.strip():
